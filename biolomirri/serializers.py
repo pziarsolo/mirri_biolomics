@@ -89,10 +89,11 @@ def serialize_to_biolomics(strain, client=None):
                     value.append({"Name": form, "Value": is_form})
             else:
                 value = None
-        elif label == "growth.recommenden_media":
+        elif attribute == "growth.recommended_media":
             growth_media = rgetattr(strain, attribute, None)
             if growth_media is not None and client is not None:
                 value = []
+                print('a')
                 for medium in growth_media:
                     ws_gm = client.retrieve_growth_medium_by_name(medium)
                     if ws_gm is None:
@@ -105,7 +106,7 @@ def serialize_to_biolomics(strain, client=None):
                 value = None
         else:
             value = rgetattr(strain, attribute, None)
-        print(label, value), biolomics_field
+        #print(label, value), biolomics_field
         if value is not None:
             content = {"Value": value, "FieldType": biolomics_type}
             record_details[biolomics_field] = content

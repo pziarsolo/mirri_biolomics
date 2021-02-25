@@ -208,7 +208,7 @@ class BiolomicsMirriClient:
         if response.status_code == 200:
             return response.json()
         else:
-            msg = f"return_code: {response.status_code}. msg: {response.json()}"
+            msg = f"return_code: {response.status_code}. msg: {response.text}"
             raise RuntimeError(msg)
 
     def update_strain(self, record_id, strain):
@@ -236,7 +236,6 @@ class BiolomicsMirriClient:
                                                  name=medium_name)
         return growth_medium
 
-        self.client.search('')
         # def _create_strain(strain, client, update=False):
 
         #     accession_number = f"{strain.id.collection} {strain.id.number}"
