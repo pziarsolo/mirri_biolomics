@@ -93,7 +93,6 @@ def serialize_to_biolomics(strain, client=None):
             growth_media = rgetattr(strain, attribute, None)
             if growth_media is not None and client is not None:
                 value = []
-                print('a')
                 for medium in growth_media:
                     ws_gm = client.retrieve_growth_medium_by_name(medium)
                     if ws_gm is None:

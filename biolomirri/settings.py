@@ -165,7 +165,7 @@ MIRRI_FIELDS = [
         "attribute": "growth.recommended_media",
         "label": "Recommended medium for growth",
         "mandatory": True,
-        "biolomics": {"field": "Recommended growth medium", "type": "Rlink"},
+        "biolomics": {"field": "Recommended growth medium", "type": "RLink"},
     },
     {
         "attribute": "form_of_supply",

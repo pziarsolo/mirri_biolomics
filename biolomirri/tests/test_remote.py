@@ -1,8 +1,7 @@
-from biolomirri.tests.utils import create_full_data_strain
 import unittest
 from pprint import pprint
-from mirri.entities.strain import Strain
-from biolomirri.serializers import serialize_to_biolomics
+
+from biolomirri.tests.utils import create_full_data_strain
 from biolomirri.remote.biolomics_client import (
     BiolomicsMirriClient, SERVER_URL, BiolomicsClientBackend,
     BiolomicsClientPassword)
@@ -30,6 +29,8 @@ class BiolomicsClientTest(unittest.TestCase):
         assert access1 is not None
         self.assertEqual(access1, access2)
 
+
+class BiolomicsClientStrainTest(unittest.TestCase):
     def test_get_strain(self):
         client = BiolomicsMirriClient(SERVER_URL, CLIENT_ID, SECRET_ID,
                                       USERNAME, PASSWORD)
@@ -44,18 +45,35 @@ class BiolomicsClientTest(unittest.TestCase):
         strain = client.retrieve_strain_by_accession_number(accession_number)
         self.assertIsNone(strain)
 
+    def test_create_strain(self):
+        strain = create_full_data_strain()
+        strain_id = f'{strain.id.collection} {strain.id.number}'
+        try:
+            client = BiolomicsMirriClient(SERVER_URL, CLIENT_ID, SECRET_ID,
+                                          USERNAME, PASSWORD)
+
+            response = client.create_strain(strain)
+            self.assertEqual(
+                response['RecordDetails']["Collection accession number"]['Value'],  strain_id)
+        finally:
+            self.delete_if_exists(strain_id)
+
+    @ staticmethod
+    def delete_if_exists(coll_accession_name):
+        client = BiolomicsMirriClient(SERVER_URL, CLIENT_ID, SECRET_ID,
+                                      USERNAME, PASSWORD)
+        strain = client.retrieve_strain_by_accession_number(
+            coll_accession_name)
+        if strain is not None:
+            client.remove_strain(strain['Record Id'])
+
+
+class BiolomicsClientGrowthMediaTest(unittest.TestCase):
     def test_growth_media_by_name(self):
         client = BiolomicsMirriClient(SERVER_URL, CLIENT_ID, SECRET_ID,
                                       USERNAME, PASSWORD)
         gm = client.retrieve_growth_medium_by_name('AAA')
         self.assertEqual(gm['Record Id'], 1)
-
-    def xtest_create_strain(self):
-        client = BiolomicsMirriClient(SERVER_URL, CLIENT_ID, SECRET_ID,
-                                      USERNAME, PASSWORD)
-        strain = create_full_data_strain()
-        response = client.create_strain(strain)
-        print(response)
 
 
 if __name__ == "__main__":

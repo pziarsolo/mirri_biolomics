@@ -2,7 +2,6 @@
 from pprint import pprint
 import time
 import requests
-from requests.compat import urljoin
 from requests_oauthlib import OAuth2Session
 
 from oauthlib.oauth2 import BackendApplicationClient, LegacyApplicationClient
@@ -159,18 +158,7 @@ def get_schema(url, token):
         raise ValueError(f"{response.status_code}: {response.text}")
 
 
-class BiolomicsMirriClient:
-    def __init__(self, server_url, client_id, client_secret, username=None,
-                 password=None, website_id=1):
-        if username is None or password is None:
-            _client = BiolomicsClientBackend(server_url, client_id,
-                                             client_secret, website_id=website_id)
-        else:
-            _client = BiolomicsClientPassword(server_url, client_id,
-                                              client_secret, username,
-                                              password, website_id=website_id)
-        self.client = _client
-
+class BiolomicsMirriCLientStrainMixin:
     def retrieve_strain_by_accession_number(self, accession_number):
         query = {
             "Query": [
@@ -183,7 +171,7 @@ class BiolomicsMirriClient:
             ],
             "Expression": "Q0",
             "DisplayStart": 0,
-            "DisplayLength": 1,
+            "DisplayLength": 10,
         }
 
         response = self.client.search('Strains', search_query=query)
@@ -195,7 +183,6 @@ class BiolomicsMirriClient:
             elif total == 1:
                 return result["Records"][0]
             else:
-                pprint(result)
                 msg = "More than one entries for {accession_number} in database"
                 raise ValueError(msg)
 
@@ -203,6 +190,11 @@ class BiolomicsMirriClient:
             raise ValueError(f"{response.status_code}: {response.text}")
 
     def create_strain(self, strain):
+        strain_id = strain.id.strain_id
+        strain_in_ws = self.retrieve_strain_by_accession_number(strain_id)
+        if strain_in_ws:
+            raise RuntimeError(f'{strain_id} already in DB')
+
         data = serialize_to_biolomics(strain, client=self)
         response = self.client.create('Strains', data=data)
         if response.status_code == 200:
@@ -212,40 +204,39 @@ class BiolomicsMirriClient:
             raise RuntimeError(msg)
 
     def update_strain(self, record_id, strain):
-
         data = serialize_to_biolomics(strain, client=self)
-
         response = self.client.update('Strains', record_id, data)
-
         if response.status_code == 200:
             return response.json()
         else:
-            msg = f"return_code: {response.status_code}. msg: {response.json()}"
+            msg = f"return_code: {response.status_code}. msg: {response.text}"
             raise RuntimeError(msg)
 
     def remove_strain(self, record_id):
-        response = self.client.delete('Strains', id)
-
+        response = self.client.delete('Strains', record_id)
         if response.status_code != 200:
             error = response.json()
             # msg = f'{error["Title"]: {error["Details"]}}'
             raise RuntimeError(error)
+
+
+class BiolomicsMirriCLientGrowtMediaMixin:
 
     def retrieve_growth_medium_by_name(self, medium_name):
         growth_medium = self.client.find_by_name('WS Growth media',
                                                  name=medium_name)
         return growth_medium
 
-        # def _create_strain(strain, client, update=False):
 
-        #     accession_number = f"{strain.id.collection} {strain.id.number}"
-        #     web_service_strain = get_strain_by_accession_number(accession_number,
-        #                                                         client)
-
-        #     if web_service_strain:
-        #         if update:
-        #             record_id = web_service_strain["RecordId"]
-        #             _update_strain(record_id, strain, client)
-
-        #     else:
-        #         _create_strain(strain, client)
+class BiolomicsMirriClient(BiolomicsMirriCLientStrainMixin,
+                           BiolomicsMirriCLientGrowtMediaMixin):
+    def __init__(self, server_url, client_id, client_secret, username=None,
+                 password=None, website_id=1):
+        if username is None or password is None:
+            _client = BiolomicsClientBackend(server_url, client_id,
+                                             client_secret, website_id=website_id)
+        else:
+            _client = BiolomicsClientPassword(server_url, client_id,
+                                              client_secret, username,
+                                              password, website_id=website_id)
+        self.client = _client
