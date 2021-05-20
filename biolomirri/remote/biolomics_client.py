@@ -1,242 +1,150 @@
+from biolomirri.remote.rest_client import BiolomicsClient
+from biolomirri.serializers.sequence import (
+    serialize_to_biolomics as sequence_to_biolomics,
+    serialize_from_biolomics as sequence_from_biolomics)
+from biolomirri.serializers.strain import (
+    serialize_to_biolomics as strain_to_biolomics,
+    serialize_from_biolomics as strain_from_biolomics)
 
+from biolomirri.serializers.growth_media import (
+    #serialize_to_biolomics as strain_to_biolomics,
+    serialize_from_biolomics as growth_medium_from_biolomics)
+from biolomirri.serializers.taxonomy import (
+    serialize_from_biolomics as taxonomy_from_biolomics)
+from biolomirri.serializers.locality import (
+    serialize_from_biolomics as country_from_biolomics)
+from biolomirri.serializers.ontobiotope import (
+    serialize_from_biolomics as ontobiotope_from_biolomics)
+from biolomirri.serializers.bibliography import (
+    serializer_from_biolomics as bibliography_from_biolomics,
+    serializer_to_biolomics as bibliography_to_biolomics
+)
 from pprint import pprint
-import time
-import requests
-from requests_oauthlib import OAuth2Session
 
-from oauthlib.oauth2 import BackendApplicationClient, LegacyApplicationClient
-from oauthlib.oauth2.rfc6749.errors import InvalidGrantError
-from biolomirri.serializers import serialize_to_biolomics
+SEQUENCE = 'sequence'
+STRAIN = 'strain'
+GROWTH_MEDIUM = 'growth_medium'
+TAXONOMY = 'taxonomy'
+COUNTRY = 'country'
+ONTOBIOTOPE = 'ontobiotope'
+BIBLIOGRAPHY = 'bibliography'
 
-SERVER_URL = "https://webservices.bio-aware.com/mirri_test"
 
-
-class _BiolomicsClient:
-    def _build_headers(self):
-        self.get_access_token()
-        return {
-            "accept": "application/json",
-            "websiteId": str(self.website_id),
-            "Authorization": f"Bearer {self.access_token}",
+class BiolomicsMirriClient:
+    _conf = {
+        SEQUENCE: {
+            'serializers': {'to': sequence_to_biolomics,
+                            'from': sequence_from_biolomics},
+            'endpoint': 'WS Sequences'},
+        STRAIN: {
+            'serializers': {'to': strain_to_biolomics,
+                            'from': strain_from_biolomics},
+            'endpoint': 'WS Strains'},
+        GROWTH_MEDIUM: {
+            'serializers':  {'from': growth_medium_from_biolomics},
+            'endpoint': 'WS Growth media'},
+        TAXONOMY: {
+            'serializers':  {'from': taxonomy_from_biolomics},
+            'endpoint': 'WS Taxonomy'},
+        COUNTRY: {
+            'serializers':  {'from': country_from_biolomics},
+            'endpoint': 'WS Locality'},
+        ONTOBIOTOPE: {
+            'serializers':  {'from': ontobiotope_from_biolomics},
+            'endpoint': 'WS Ontobiotope'},
+        BIBLIOGRAPHY: {
+            'serializers': {'from': bibliography_from_biolomics,
+                            'to':  bibliography_to_biolomics},
+            'endpoint':  'WS Bibliography'
         }
-
-    def get_detail_url(self, end_point, record_id):
-        return "/".join([self.server_url, 'data', end_point, str(record_id)])
-
-    def get_list_url(self, end_point):
-        return "/".join([self.server_url, 'data', end_point])
-
-    def get_search_url(self, end_point):
-        return "/".join([self.server_url, 'search', end_point])
-
-    def get_find_by_name_url(self, end_point):
-        return "/".join([self.get_search_url(end_point), 'findByName'])
-
-    def search(self, end_point, search_query):
-        header = self._build_headers()
-        url = self.get_search_url(end_point)
-        response = requests.post(url, json=search_query, headers=header)
-        return response
-
-    def retrieve(self, end_point, id):
-        header = self._build_headers()
-        url = self.get_detail_url(end_point, id)
-        response = requests.put(url, headers=header)
-        return response
-
-    def create(self, end_point, data):
-        header = self._build_headers()
-        url = self.get_list_url(end_point)
-        response = requests.post(url, json=data, headers=header)
-        return response
-
-    def update(self, end_point, id, data):
-        header = self._build_headers()
-        url = self.get_detail_url(end_point, id)
-        response = requests.put(url, json=data, headers=header)
-        return response
-
-    def delete(self, end_point, id):
-        header = self._build_headers()
-        url = self.get_detail_url(end_point, id)
-        response = requests.delete(url, headers=header)
-        return response
-
-    def find_by_name(self, end_point, name):
-        header = self._build_headers()
-        url = self.get_find_by_name_url(end_point)
-        response = requests.get(url, headers=header, params={'name': name})
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 204:
-            return None
-        else:
-            raise RuntimeError(f"{response.status_code}: {response.text}")
-
-
-class BiolomicsClientBackend(_BiolomicsClient):
-    def __init__(self, server_url, client_id, client_secret, website_id=1):
-        self._auth_url = server_url + "/connect/token"
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._client = None
-        self.access_token = None
-        self.website_id = website_id
-        self.server_url = server_url
-
-    def get_access_token(self):
-        if self._client is None:
-            self._client = BackendApplicationClient(client_id=self._client_id)
-            authenticated = False
-        else:
-            expires_at = self._client.token["expires_at"]
-            authenticated = False if expires_at < time.time() else True
-
-        if not authenticated:
-            oauth = OAuth2Session(client=self._client)
-            token = oauth.fetch_token(
-                token_url=self._auth_url,
-                client_id=self._client_id,
-                client_secret=self._client_secret,
-            )
-            oauth.close()
-            self.access_token = token["access_token"]
-
-        return self.access_token
-
-
-class BiolomicsClientPassword(_BiolomicsClient):
-    def __init__(self, server_url, client_id, client_secret, username, password,
-                 website_id=1):
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._username = username
-        self._password = password
-        self._client = None
-        self.server_url = server_url
-        self._auth_url = self.server_url + "/connect/token"
-        self.access_token = None
-        self.website_id = website_id
-        # self.get_access_token()
-
-    def get_access_token(self):
-        if self._client is None:
-            self._client = LegacyApplicationClient(client_id=self._client_id)
-            authenticated = False
-        else:
-            expires_at = self._client.token["expires_at"]
-            authenticated = False if expires_at < time.time() else True
-
-        if not authenticated:
-            oauth = OAuth2Session(client=self._client)
-            try:
-                token = oauth.fetch_token(
-                    token_url=self._auth_url,
-                    username=self._username,
-                    password=self._password,
-                    client_id=self._client_id,
-                    client_secret=self._client_secret,
-                )
-            except InvalidGrantError:
-                oauth.close()
-                raise
-            self.access_token = token["access_token"]
-            oauth.close()
-        return self.access_token
-
-
-def get_schema(url, token):
-    headers = {
-        "accept": "*/*",
-        "websiteId": "1",
-        "Authorization": f"Bearer {token['access_token']}",
     }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        raise ValueError(f"{response.status_code}: {response.text}")
 
+    def __init__(self, server_url, api_version, client_id, client_secret, username,
+                 password, website_id=1):
+        _client = BiolomicsClient(server_url, api_version, client_id,
+                                  client_secret, username, password,
+                                  website_id=website_id)
 
-class BiolomicsMirriCLientStrainMixin:
-    def retrieve_strain_by_accession_number(self, accession_number):
-        query = {
-            "Query": [
-                {
-                    "Index": 0,
-                    "FieldName": "Collection accession number",
-                    "Operation": "TextExactMatch",
-                    "Value": accession_number,
-                }
-            ],
-            "Expression": "Q0",
-            "DisplayStart": 0,
-            "DisplayLength": 10,
-        }
+        self.client = _client
+        self.schemas = self.client.get_schemas()
+        self.allowed_fields = self.client.allowed_fields
 
-        response = self.client.search('Strains', search_query=query)
-        if response.status_code == 200:
-            result = response.json()
-            total = result["TotalCount"]
-            if total == 0:
-                return None
-            elif total == 1:
-                return result["Records"][0]
-            else:
-                msg = "More than one entries for {accession_number} in database"
-                raise ValueError(msg)
+    def get_endpoint(self, entity_name):
+        return self._conf[entity_name]['endpoint']
 
-        else:
+    def get_serializers_to(self, entity_name):
+        return self._conf[entity_name]['serializers']['to']
+
+    def get_serializers_from(self, entity_name):
+        return self._conf[entity_name]['serializers']['from']
+
+    def retrieve_by_name(self, entity_name, name):
+        endpoint = self.get_endpoint(entity_name)
+        serializer_from = self.get_serializers_from(entity_name)
+        response = self.client.find_by_name(endpoint, name=name)
+        if response.status_code == 204:
+            return None
+        elif response.status_code != 200:
             raise ValueError(f"{response.status_code}: {response.text}")
 
-    def create_strain(self, strain):
-        strain_id = strain.id.strain_id
-        strain_in_ws = self.retrieve_strain_by_accession_number(strain_id)
-        if strain_in_ws:
-            raise RuntimeError(f'{strain_id} already in DB')
+        ws_entity = response.json()
+        return serializer_from(ws_entity)
 
-        data = serialize_to_biolomics(strain, client=self)
-        response = self.client.create('Strains', data=data)
+    def retrieve_by_id(self, entity_name, _id):
+        endpoint = self.get_endpoint(entity_name)
+        serializer_from = self.get_serializers_from(entity_name)
+        response = self.client.retrieve(endpoint, id=_id)
+        if response.status_code == 204:
+            return None
+        elif response.status_code != 200:
+            raise ValueError(f"{response.status_code}: {response.text}")
+
+        ws_entity = response.json()
+        # pprint(ws_entity)
+        return serializer_from(ws_entity)
+
+    def create(self, entity_name, entity):
+        endpoint = self.get_endpoint(entity_name)
+        serializer_to = self.get_serializers_to(entity_name)
+        serializer_from = self.get_serializers_from(entity_name)
+        data = serializer_to(entity, client=self)
+        response = self.client.create(endpoint, data=data)
+        # pprint(response.json())
         if response.status_code == 200:
-            return response.json()
+            return serializer_from(response.json())
+
         else:
             msg = f"return_code: {response.status_code}. msg: {response.text}"
             raise RuntimeError(msg)
 
-    def update_strain(self, record_id, strain):
-        data = serialize_to_biolomics(strain, client=self)
-        response = self.client.update('Strains', record_id, data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            msg = f"return_code: {response.status_code}. msg: {response.text}"
-            raise RuntimeError(msg)
-
-    def remove_strain(self, record_id):
-        response = self.client.delete('Strains', record_id)
+    def delete_by_id(self, entity_name, record_id):
+        endpoint = self.get_endpoint(entity_name)
+        response = self.client.delete(endpoint, record_id)
         if response.status_code != 200:
             error = response.json()
             # msg = f'{error["Title"]: {error["Details"]}}'
             raise RuntimeError(error)
 
+    def delete_by_name(self, entity_name, record_name):
+        endpoint = self.get_endpoint(entity_name)
+        response = self.client.find_by_name(endpoint, record_name)
+        if response.status_code != 200:
+            error = response.json()
+            # msg = f'{error["Title"]: {error["Details"]}}'
+            raise RuntimeError(error)
+        record_id = response.json()['RecordId']
+        self.delete_by_id(entity_name, record_id)
 
-class BiolomicsMirriCLientGrowtMediaMixin:
-
-    def retrieve_growth_medium_by_name(self, medium_name):
-        growth_medium = self.client.find_by_name('WS Growth media',
-                                                 name=medium_name)
-        return growth_medium
-
-
-class BiolomicsMirriClient(BiolomicsMirriCLientStrainMixin,
-                           BiolomicsMirriCLientGrowtMediaMixin):
-    def __init__(self, server_url, client_id, client_secret, username=None,
-                 password=None, website_id=1):
-        if username is None or password is None:
-            _client = BiolomicsClientBackend(server_url, client_id,
-                                             client_secret, website_id=website_id)
-        else:
-            _client = BiolomicsClientPassword(server_url, client_id,
-                                              client_secret, username,
-                                              password, website_id=website_id)
-        self.client = _client
+    def search(self, entity_name, query):
+        endpoint = self.get_endpoint(entity_name)
+        serializer_from = self.get_serializers_from(entity_name)
+        response = self.client.search(endpoint, search_query=query)
+        if response.status_code != 200:
+            error = response.json()
+            # msg = f'{error["Title"]: {error["Details"]}}'
+            raise RuntimeError(error)
+        search_result = response.json()
+        # pprint(search_result)
+        result = {'total': search_result['TotalCount'],
+                  'records': [serializer_from(record) for record in search_result['Records']]}
+        return result
