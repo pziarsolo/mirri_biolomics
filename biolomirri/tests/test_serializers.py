@@ -292,7 +292,7 @@ class StrainSerializerTest(unittest.TestCase):
                                       SECRET_ID, USERNAME, PASSWORD)
         strain = create_full_data_strain()
         ws_strain = strain_to_biolomics(strain, client=client)
-        pprint(ws_strain)
+        pprint(ws_strain['RecordId'])
         self.assertEqual(strain.collect.habitat_ontobiotope,
                          ws_strain['RecordDetails']['Ontobiotope']['Value'][0]['Name']['Value'])
         self.assertEqual(pycountry.countries.get(alpha_3=strain.collect.location.country).name,
@@ -304,6 +304,7 @@ class StrainSerializerTest(unittest.TestCase):
         self.assertEqual(strain.record_id, 148038)
         self.assertEqual(strain.record_name, 'MIRRI 2240561')
         self.assertEqual(strain.taxonomy.long_name, 'Escherichia coli')
+        self.assertEqual(strain.growth.recommended_media, ['AAA'])
 
 
 BIOLOMICSSEQ = {

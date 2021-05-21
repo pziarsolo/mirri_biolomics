@@ -38,7 +38,6 @@ class TaxonomyMirri(Taxonomy):
 
 def serialize_from_biolomics(ws_data) -> TaxonomyMirri:
 
-
     return ws_data
     medium = GrowthMedium()
     medium.record_name = ws_data.get('RecordName', None)

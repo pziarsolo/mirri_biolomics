@@ -1,3 +1,4 @@
+from biolomirri.serializers.strain import StrainMirri
 from mirri.entities.strain import Strain, StrainId, OrganismType
 from mirri.entities.sequence import GenomicSequence
 from mirri.entities.date_range import DateRange
@@ -6,7 +7,7 @@ from mirri.settings import NAGOYA_NO_RESTRICTIONS
 
 
 def create_full_data_strain():
-    strain = Strain()
+    strain = StrainMirri()
 
     strain.id.number = "1"
     strain.id.collection = "TESTCC"

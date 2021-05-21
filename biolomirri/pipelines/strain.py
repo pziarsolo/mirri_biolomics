@@ -17,3 +17,5 @@ def retrieve_strain_by_accession_number(client, accession_number):
     else:
         msg = "More than one entries for {accession_number} in database"
         raise ValueError(msg)
+
+def create_or_update_strain(strain, force_update=True):

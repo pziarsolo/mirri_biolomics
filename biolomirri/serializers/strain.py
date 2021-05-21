@@ -64,7 +64,7 @@ class StrainMirri(Strain):
         self._data['record_name'] = value
 
 
-def serialize_to_biolomics(strain: Strain, client=None):  # sourcery no-metrics
+def serialize_to_biolomics(strain: Strain, client=None, update=False):  # sourcery no-metrics
     strain_record_details = {}
 
     for field in MIRRI_FIELDS:
@@ -135,8 +135,8 @@ def serialize_to_biolomics(strain: Strain, client=None):  # sourcery no-metrics
                     ws_gm = client.retrieve_by_name('growth_medium', medium)
                     if ws_gm is None:
                         raise ValueError(
-                            'Can not find the growth medium: {medium}')
-                    gm = {"Name": {"Value": "medium", "FieldType": "E", },
+                            f'Can not find the growth medium: {medium}')
+                    gm = {"Name": {"Value": medium, "FieldType": "E"},
                           "RecordId": ws_gm.record_id}
                     ref_value.append(gm)
                 value = ref_value
@@ -185,8 +185,12 @@ def serialize_to_biolomics(strain: Strain, client=None):  # sourcery no-metrics
     # if False:
     #     record_details["Data provided by"] = {
     #         "Value": strain.id.collection, "FieldType": "V"}
-    strain_structure = {"RecordDetails": strain_record_details,
-                        "Acronym": "MIRRI "}
+    strain_structure = {"RecordDetails": strain_record_details}
+    if update:
+        strain_structure['RecordId'] = strain.record_id
+        strain_structure['RecordName'] = strain.record_name
+    else:
+        strain_structure["Acronym"] =  "MIRRI "
 
     return strain_structure
 
@@ -201,7 +205,6 @@ def get_remote_rlink(client, endpoint, record_name):
             },
             "RecordId": entity["RecordId"]
         }]
-
 
 
 def add_strain_rlink_to_entity(record, strain_id, strain_name):
@@ -224,7 +227,7 @@ PLOIDY_TRANSLATOR = {
     9: 'Polyploid'
 }
 
-REV_PLOYDY_TRANSLATOR = {v: k for k, v in PLOIDY_TRANSLATOR.items()}
+REV_PLOIDY_TRANSLATOR = {v: k for k, v in PLOIDY_TRANSLATOR.items()}
 
 
 def _translate_polidy(ploidy):
@@ -313,7 +316,7 @@ def serialize_from_biolomics(biolomics_strain):  # sourcery no-metrics
         elif label == "Recommended growth temperature":
             value = float((value['max'] + value['min']) / 2)
         elif label == "Recommended medium for growth":
-            value = [v['Name'] for v in value]
+            value = [v['Name']['Value'] for v in value]
         elif label == "Form of supply":
             value = [item['Name'] for item in value if item['Value'] == 'yes']
         elif label in LIST_TYPES_TO_JOIN:
@@ -338,7 +341,7 @@ def serialize_from_biolomics(biolomics_strain):  # sourcery no-metrics
                 continue
 
         elif label == 'Ploidy':
-            value = REV_PLOYDY_TRANSLATOR[value]
+            value = REV_PLOIDY_TRANSLATOR[value]
         rsetattr(strain, attribute, value)
     # fields that are not in MIRRI FIELD list
     # country

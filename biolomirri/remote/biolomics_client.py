@@ -148,3 +148,18 @@ class BiolomicsMirriClient:
         result = {'total': search_result['TotalCount'],
                   'records': [serializer_from(record) for record in search_result['Records']]}
         return result
+
+    def update(self, entity_name, entity):
+        endpoint = self.get_endpoint(entity_name)
+        serializer_to = self.get_serializers_to(entity_name)
+        serializer_from = self.get_serializers_from(entity_name)
+        data = serializer_to(entity, client=self, update=True)
+        response = self.client.update(endpoint, data=data)
+        # pprint(response.json())
+        print(response.status_code)
+        if response.status_code == 200:
+            return serializer_from(response.json())
+
+        else:
+            msg = f"return_code: {response.status_code}. msg: {response.text}"
+            raise RuntimeError(msg)

@@ -33,7 +33,7 @@ class GenomicSequenceBiolomics(GenomicSequence):
         return _data
 
 
-def serialize_to_biolomics(marker: GenomicSequenceBiolomics, client=None):
+def serialize_to_biolomics(marker: GenomicSequenceBiolomics, client=None, update=False):
     ws_sequence = {}
     if marker.record_id:
         ws_sequence[RECORD_ID] = marker.record_id

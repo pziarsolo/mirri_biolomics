@@ -105,11 +105,12 @@ class BiolomicsClient:
         url = self.get_list_url(end_point)
         return requests.post(url, json=data, headers=header)
 
-    def update(self, end_point, id, data):
+    def update(self, end_point, data):
         self._check_end_point_exists(end_point)
-        self._check_data_consistency(data, self.allowed_fields[end_point])
+        self._check_data_consistency(data, self.allowed_fields[end_point],
+                                     update=True)
         header = self._build_headers()
-        url = self.get_detail_url(end_point, id, api_version=self._api_version)
+        url = self.get_list_url(end_point)
         return requests.put(url, json=data, headers=header)
 
     def delete(self, end_point, id):
@@ -153,8 +154,13 @@ class BiolomicsClient:
         if endpoint not in self.allowed_fields.keys():
             raise ValueError(f'{endpoint} not a recogniced endpoint')
 
-    def _check_data_consistency(self, data, allowed_fields):
-        if set(data.keys()).difference(['RecordDetails', 'RecordName', 'Acronym']):
+    def _check_data_consistency(self, data, allowed_fields, update=False):
+        update_mandatory = set(['RecordDetails', 'RecordName', 'RecordId'])
+        if update and not update_mandatory.issubset(data.keys()):
+            msg = 'Updating data keys must be RecordDetails, RecordName and RecordI'
+            raise ValidationError(msg)
+
+        if not update and set(data.keys()).difference(['RecordDetails', 'RecordName', 'Acronym']):
             msg = 'data keys must be RecordDetails and RecordName or Acronym'
             raise ValidationError(msg)
         for field_name, field_value in data['RecordDetails'].items():

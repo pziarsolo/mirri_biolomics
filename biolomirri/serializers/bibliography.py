@@ -53,7 +53,7 @@ def serializer_from_biolomics(ws_data) -> Publication:
     return pub
 
 
-def serializer_to_biolomics(publication: Publication, client=None):
+def serializer_to_biolomics(publication: Publication, client=None, update=False):
     ws_data = {}
     if publication.record_id:
         ws_data[RECORD_ID] = publication.record_id

@@ -3,7 +3,7 @@ import unittest
 from biolomirri.tests import VERSION, SERVER_URL
 from biolomirri.tests.utils import create_full_data_strain
 from biolomirri.settings import CLIENT_ID, SECRET_ID, USERNAME, PASSWORD
-from biolomirri.remote.biolomics_client import BiolomicsMirriClient
+from biolomirri.remote.biolomics_client import BiolomicsMirriClient, STRAIN
 from biolomirri.pipelines.strain import retrieve_strain_by_accession_number
 
 
@@ -75,10 +75,32 @@ class BiolomicsSequenceClientTest(unittest.TestCase):
         record_id = None
         try:
             new_strain = self.client.create('strain', strain)
+
             record_id = new_strain.record_id
+            self.assertEqual(new_strain.growth.recommended_media, ['AAA'])
             self.assertEqual(new_strain.id.strain_id, strain.id.strain_id)
         finally:
             if record_id is not None:
+                self.client.delete_by_id('strain', record_id)
+
+    def test_update_strain(self):
+        strain = create_full_data_strain()
+        strain.growth.recommended_media.append('ahgfsdha')
+        record_id = None
+        try:
+            new_strain = self.client.create('strain', strain)
+            record_id = new_strain.record_id
+            self.assertEqual(new_strain.id.strain_id, strain.id.strain_id)
+            new_strain.id.number = '2'
+            updated_strain = self.client.update(STRAIN, new_strain)
+            self.assertEqual(updated_strain.id.strain_id, new_strain.id.strain_id)
+
+            retrieved_strain = self.client.retrieve_by_id(STRAIN, record_id)
+            self.assertEqual(retrieved_strain.id.strain_id, new_strain.id.strain_id)
+
+        finally:
+            if record_id is not None:
+                print('deleting')
                 self.client.delete_by_id('strain', record_id)
 
     def test_search_by_accession_number(self):
