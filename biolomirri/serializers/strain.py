@@ -6,7 +6,8 @@ from mirri import rgetattr, rsetattr
 from mirri.entities.date_range import DateRange
 from mirri.entities.strain import ORG_TYPES, OrganismType, Strain, StrainId
 from mirri.io.parsers.mirri_excel import add_taxon_to_strain
-
+from biolomirri.remote.endoint_names import (GROWTH_MEDIUM_WS, TAXONOMY_WS,
+                                             ONTOBIOTOPE_WS, BIBLIOGRAPHY_WS)
 from mirri.settings import (
     ALLOWED_FORMS_OF_SUPPLY,
     NAGOYA_PROBABLY_SCOPE,
@@ -64,7 +65,7 @@ class StrainMirri(Strain):
         self._data['record_name'] = value
 
 
-def serialize_to_biolomics(strain: Strain, client=None, update=False):  # sourcery no-metrics
+def serialize_to_biolomics(strain: StrainMirri, client=None, update=False):  # sourcery no-metrics
     strain_record_details = {}
 
     for field in MIRRI_FIELDS:
@@ -104,7 +105,8 @@ def serialize_to_biolomics(strain: Strain, client=None, update=False):  # source
                 value.append({"Name": ot, "Value": is_organism})
         elif label == 'Taxon name':
             if client:
-                value = get_remote_rlink(client, 'taxonomy', strain.taxonomy.long_name)
+                value = [get_remote_rlink(client, TAXONOMY_WS,
+                                          strain.taxonomy.long_name)]
 
         elif label in DATE_TYPE_FIELDS:
             year = value._year
@@ -132,7 +134,7 @@ def serialize_to_biolomics(strain: Strain, client=None, update=False):  # source
             if client is not None:
                 ref_value = []
                 for medium in value:
-                    ws_gm = client.retrieve_by_name('growth_medium', medium)
+                    ws_gm = client.retrieve_by_name(GROWTH_MEDIUM_WS, medium)
                     if ws_gm is None:
                         raise ValueError(
                             f'Can not find the growth medium: {medium}')
@@ -159,7 +161,7 @@ def serialize_to_biolomics(strain: Strain, client=None, update=False):  # source
         elif label == "Geographic origin":
             if client is not None and value.country is not None:
                 _country = pycountry.countries.get(alpha_3=value.country)
-                _value = get_remote_rlink(client, 'country', _country.name)
+                _value = [get_remote_rlink(client, 'country', _country.name)]
                 content = {"Value": _value, "FieldType": "RLink"}
                 strain_record_details['Country'] = content
             _value = []
@@ -169,12 +171,19 @@ def serialize_to_biolomics(strain: Strain, client=None, update=False):  # source
                     _value.append(sector_val)
             value = "; ".join(_value) if _value else None
 
-        elif label == "Literature":
-            continue
-
         elif label == "Ontobiotope":
             if client and value:
-                value = get_remote_rlink(client, 'ontobiotope', value)
+                value = [get_remote_rlink(client, ONTOBIOTOPE_WS, value)]
+        elif label == 'Literature':
+            if client and value:
+                pub_rlinks = []
+                for pub in value:
+                    rlink = get_remote_rlink(client, BIBLIOGRAPHY_WS, pub.title)
+                    pub_rlinks.append(rlink)
+                if pub_rlinks:
+                    value = pub_rlinks
+        elif label == '':
+            pass
 
         elif label == 'Ploidy':
             value = _translate_polidy(value)
@@ -198,13 +207,14 @@ def serialize_to_biolomics(strain: Strain, client=None, update=False):  # source
 def get_remote_rlink(client, endpoint, record_name):
     entity = client.retrieve_by_name(endpoint, record_name)
     if entity:
-        return [{
-            "Name": {
-                "Value": entity["RecordName"],
-                "FieldType": "E"
-            },
-            "RecordId": entity["RecordId"]
-        }]
+        try:
+            record_name = entity.record_name
+            record_id = entity.record_id
+        except AttributeError:
+            record_name = entity["RecordName"]
+            record_id = entity["RecordId"]
+        return {"Name": {"Value": record_name, "FieldType": "E"},
+                "RecordId": record_id}
 
 
 def add_strain_rlink_to_entity(record, strain_id, strain_name):

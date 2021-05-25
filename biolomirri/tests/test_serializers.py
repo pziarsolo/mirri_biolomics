@@ -292,11 +292,12 @@ class StrainSerializerTest(unittest.TestCase):
                                       SECRET_ID, USERNAME, PASSWORD)
         strain = create_full_data_strain()
         ws_strain = strain_to_biolomics(strain, client=client)
-        pprint(ws_strain['RecordId'])
         self.assertEqual(strain.collect.habitat_ontobiotope,
                          ws_strain['RecordDetails']['Ontobiotope']['Value'][0]['Name']['Value'])
         self.assertEqual(pycountry.countries.get(alpha_3=strain.collect.location.country).name,
                          ws_strain['RecordDetails']['Country']['Value'][0]['Name']['Value'])
+        self.assertEqual(strain.publications[0].title,
+                         ws_strain['RecordDetails']['Literature']['Value'][0]['Name']['Value'])
 
     def test_serialize_from_biolomics(self):
         ws_strain = STRAIN_WS

@@ -1,5 +1,5 @@
 from biolomirri.serializers.strain import StrainMirri
-from mirri.entities.strain import Strain, StrainId, OrganismType
+from mirri.entities.strain import StrainId, OrganismType
 from mirri.entities.sequence import GenomicSequence
 from mirri.entities.date_range import DateRange
 from mirri.entities.publication import Publication
@@ -78,7 +78,7 @@ def create_full_data_strain():
     strain.genetics.plasmids_in_collections = ['asdasda']
 
     pub = Publication()
-    pub.pubmed_id = "1"
+    pub.title = "The genus Amylomyces"
     strain.publications = [pub]
 
     strain.plant_pathogenicity_code = 'PATH:001'

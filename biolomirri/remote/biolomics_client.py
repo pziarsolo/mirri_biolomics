@@ -1,3 +1,7 @@
+from biolomirri.remote.endoint_names import (SEQUENCE_WS, STRAIN_WS,
+                                             GROWTH_MEDIUM_WS, TAXONOMY_WS,
+                                             COUNTRY_WS, ONTOBIOTOPE_WS,
+                                             BIBLIOGRAPHY_WS)
 from biolomirri.remote.rest_client import BiolomicsClient
 from biolomirri.serializers.sequence import (
     serialize_to_biolomics as sequence_to_biolomics,
@@ -21,38 +25,29 @@ from biolomirri.serializers.bibliography import (
 )
 from pprint import pprint
 
-SEQUENCE = 'sequence'
-STRAIN = 'strain'
-GROWTH_MEDIUM = 'growth_medium'
-TAXONOMY = 'taxonomy'
-COUNTRY = 'country'
-ONTOBIOTOPE = 'ontobiotope'
-BIBLIOGRAPHY = 'bibliography'
-
-
 class BiolomicsMirriClient:
     _conf = {
-        SEQUENCE: {
+        SEQUENCE_WS: {
             'serializers': {'to': sequence_to_biolomics,
                             'from': sequence_from_biolomics},
             'endpoint': 'WS Sequences'},
-        STRAIN: {
+        STRAIN_WS: {
             'serializers': {'to': strain_to_biolomics,
                             'from': strain_from_biolomics},
             'endpoint': 'WS Strains'},
-        GROWTH_MEDIUM: {
+        GROWTH_MEDIUM_WS: {
             'serializers':  {'from': growth_medium_from_biolomics},
             'endpoint': 'WS Growth media'},
-        TAXONOMY: {
+        TAXONOMY_WS: {
             'serializers':  {'from': taxonomy_from_biolomics},
             'endpoint': 'WS Taxonomy'},
-        COUNTRY: {
+        COUNTRY_WS: {
             'serializers':  {'from': country_from_biolomics},
             'endpoint': 'WS Locality'},
-        ONTOBIOTOPE: {
+        ONTOBIOTOPE_WS: {
             'serializers':  {'from': ontobiotope_from_biolomics},
             'endpoint': 'WS Ontobiotope'},
-        BIBLIOGRAPHY: {
+        BIBLIOGRAPHY_WS: {
             'serializers': {'from': bibliography_from_biolomics,
                             'to':  bibliography_to_biolomics},
             'endpoint':  'WS Bibliography'
@@ -163,3 +158,6 @@ class BiolomicsMirriClient:
         else:
             msg = f"return_code: {response.status_code}. msg: {response.text}"
             raise RuntimeError(msg)
+
+    def rollback(self, created_ids):
+        self.client.roolback(created_ids)
